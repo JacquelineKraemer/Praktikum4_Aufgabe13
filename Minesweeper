@@ -1,0 +1,450 @@
+// PAD1 - Praktikum 4
+// Aufgabe 13
+// 762199
+
+#include <iostream>
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+#include <string>
+#include <algorithm>
+#include <vector>
+#include <sstream>
+using namespace std;
+
+// Funktionen
+void create_field(char field[10][10]);		// Generiert Spielfeld
+void print_field(char field[10][10]);	    // Gibt Spielfeld aus
+void create_mines();			            // Bomben erstellen
+void user_input();                          // Benutzer Eingabe
+void rules();                               // Spielregeln
+void highscores();                          // Highscores
+void menu();                                // Menü, da wird alles gesteuert, das Spiel endet erst wenn man das Menü verlässt
+void game_loop();                           // Spielstart
+void menureturn();                          // Loop um ins Menü zurück zu gelangen
+int  reveal(int row, int column);           // Bomben in der nähe aufdecken
+void all_highscores();                      // Speichert Usersame und Score
+void final_print_loss();
+void final_print_win();
+void game_over_ascii();
+void you_win_ascii();
+void minesweeper_ascii();
+void highscore_ascii();
+void rules_ascii();
+
+// Globale Variablen
+bool game_over_condition = false;
+char field[10][10];
+char mine_position[10][10];
+int counter = 0;
+int highscore = -1;
+int highest_score = 0;
+vector<pair<int, string>>player;            // Highscore Liste
+
+void create_field(char field[10][10])           // Greift auf das Spielfeld, was vorher initialisiert wurde, zurück
+{
+    for (int i = 0; i < 10; i++)
+    {
+        for (int j = 0; j < 10; j++)
+        {
+            field[i][j] = '*';
+        }
+    }
+}
+
+
+void print_field(char field[10][10])            // Greift auf das Spielfeld, was vorher initialisiert wurde, zurück
+{
+    cout << "   ";                              // A-J gerade rücken
+    for (char i(65); i < 75; i++)               // Ausgabe von A-J
+    {
+        cout << i << " ";                       // Buchstabe an Stelle von 'i' und danach ein Leerzeichen
+    }
+
+    cout << endl;
+
+    for (int i = 0; i < 10; i++)
+    {
+        if (i == 9)                             // Um die 10te Reihe gerade zu rücken
+        {
+            cout << i + 1 << " ";
+        }
+        else                                    // Ausgabe von 1-9
+        {
+            cout << " " << i + 1 << " ";        // Damit 1-10 Reihen ausgegeben wird und nicht 0-9 Reihen
+        }
+        for (int j = 0; j < 10; j++)            // Nach jeder ausgegebenen Zahl werden die '*' ausgegeben
+        {
+            cout << field[i][j] << " ";
+        }
+
+        cout << endl;
+    }
+}
+
+void create_mines()
+{
+    srand(time(NULL));                          // Damit immer verschiedene Zufallszahlen generiert werden und nicht immer die gleichen
+    int counter = 0;
+    int mines = 10;
+
+    for (int i = 0; i < 10; i++)                // Füllt erst ein Array mit der Identischen Größe wie vom Spielfeld mit Nullen
+    {
+        for (int j = 0; j < 10; j++)
+        {
+            mine_position[i][j] = '0';
+        }
+    }
+
+    while (counter < mines)
+    {
+        int i = rand() % 10;                    // Generiert eine zufällige Zahl zwischen 0-9
+        int j = rand() % 10;
+
+        mine_position[i][j] = 'X';              // Ersetzt die Null mit einem X um eine Miene zu markieren
+
+        counter++;
+    }
+
+}
+
+void user_input()
+{
+    int i = 0;
+    char row = ' ';                         // Char für die Spalten damit man die Eingabe überprüfen kann
+    string column;                                // String für die Reihen damit man es in der switch case umwandeln kann
+    int row_to_number = -1;                 // Eingabe als Zahl wahrnehmen damit man damit im Array navigieren kann
+
+    cin >> row;                             // Spalte eingeben
+
+    if (row == 'x')
+    {
+        game_over_condition = true;
+        exit(0);
+    }
+
+    // Falls was anderes außer A-J oder a-j eingegeben wird, muss man es erneut versuchen
+    while (row != 'A' && row != 'B' && row != 'C' && row != 'D' && row != 'E' && row != 'F' && row != 'G' && row != 'H' && row != 'I' && row != 'J' && row != 'a' && row != 'b' && row != 'c' && row != 'd' && row != 'e' && row != 'f' && row != 'g' && row != 'h' && row != 'i' && row != 'j' && row != 'x')
+    {
+        //cout << "Invalid letter, try again" << endl;
+        cin >> row;
+    }
+
+    i = (int)row;
+
+    if (row > 96 && row < 107)          // Umwandlung von Klein in Großbuchstaben
+    {
+        i -= 32;
+        row = char(i);
+    }
+
+    switch (row)                            // Wandelt den eingegebenen Buchstaben in die dazu gehörige Zahl um damit das Array arbeiten kann
+    {
+    case 'A': row_to_number = 0; break;
+    case 'B': row_to_number = 1; break;
+    case 'C': row_to_number = 2; break;
+    case 'D': row_to_number = 3; break;
+    case 'E': row_to_number = 4; break;
+    case 'F': row_to_number = 5; break;
+    case 'G': row_to_number = 6; break;
+    case 'H': row_to_number = 7; break;
+    case 'I': row_to_number = 8; break;
+    case 'J': row_to_number = 9; break;
+    }
+
+    cin >> column;                                // Reihe eingeben
+    cout << endl;
+
+    // Falls man was anderes außer 1-10 eingibt, muss man erneut eingeben
+    while (column != "1" && column != "2" && column != "3" && column != "4" && column != "5" && column != "6" && column != "7" && column != "8" && column != "9" && column != "10")
+    {
+        //cout << "Invalid number, try again" << endl;
+        cin >> column;
+    }
+
+    int column_to_number = 0;                      // Eingabe als Zahl wahrnehmen damit man damit im Array navigieren kann
+    istringstream stream(column);                  // Wandelt column von string in int um damit das Array damit arbeiten kann
+    stream >> column_to_number;
+
+    column_to_number = column_to_number -1;
+
+    //if (column == "1") { column_to_number = 0; }    // wandelt die eingegebene string zahl in die dazu gehörige int zahl um damit das array arbeiten kann
+    //if (column == "2") { column_to_number = 1; }
+    //if (column == "3") { column_to_number = 2; }
+    //if (column == "4") { column_to_number = 3; }
+    //if (column == "5") { column_to_number = 4; }
+    //if (column == "6") { column_to_number = 5; }
+    //if (column == "7") { column_to_number = 6; }
+    //if (column == "8") { column_to_number = 7; }
+    //if (column == "9") { column_to_number = 8; }
+    //if (column == "10") { column_to_number = 9; }
+
+    if (mine_position[column_to_number][row_to_number] == 'X')    // Game Over falls man auf eine Mine trifft
+    {
+        system("clear");
+        game_over_ascii();
+        final_print_loss();
+        game_over_condition = true;
+    }
+    else                                                            // Falls keine Mine, wird die eingegebene Position mit der reveal Funktion auf Minen im Umfeld überprüft
+    {
+        field[column_to_number][row_to_number] = reveal(column_to_number, row_to_number);   // Gibt die Anzahl der angerenzenden Minen, an Stelle von der Eingabe, zurück und erscheint auf dem Spielfeld
+    }
+    if (counter == 90)                                              // 90 da wir 10 minen haben
+    {
+        final_print_win();
+    }
+
+    counter++;
+}
+
+int reveal(int row, int column) // Arbeitet mit den getätigten eingaben im user_input
+{
+    int reveal = 0;
+
+    if (mine_position[row + 1][column] == 'X') { reveal += 1; }
+    if (mine_position[row - 1][column] == 'X') { reveal += 1; }
+    if (mine_position[row][column + 1] == 'X') { reveal += 1; }
+    if (mine_position[row][column - 1] == 'X') { reveal += 1; }
+    if (mine_position[row + 1][column + 1] == 'X') { reveal += 1; }
+    if (mine_position[row + 1][column - 1] == 'X') { reveal += 1; }
+    if (mine_position[row - 1][column + 1] == 'X') { reveal += 1; }
+    if (mine_position[row - 1][column - 1] == 'X') { reveal += 1; }
+
+    switch (reveal)                 // Wandelt es in einen char um da sonst die Ausgabe auf dem Feld buggt
+    {
+    case 0: reveal = ' '; break;
+    case 1: reveal = '1'; break;
+    case 2: reveal = '2'; break;
+    case 3: reveal = '3'; break;
+    case 4: reveal = '4'; break;
+    case 5: reveal = '5'; break;
+    case 6: reveal = '6'; break;
+    case 7: reveal = '7'; break;
+    case 8: reveal = '8'; break;
+    }
+
+    return reveal;                  // Gibt dann die Anzahl zurück
+}
+
+void game_loop()
+{
+    system("clear");
+    create_field(field);            // Feld wird generiert
+    create_mines();                 // Minen werden generiert
+
+    while (game_over_condition == false && counter < 91)    // Es wird solange gespielt bis man verliert, gewinnt oder das Spiel mitten drin abbricht (die letzte bedingung wird im user_input cin >> columns geprüft)
+    {
+        cout << endl;
+
+        system("clear");
+        print_field(field);         // Feld wird mit den vorherigen Eingaben ausgegeben
+        user_input();               // Spieler macht dann seine Eingaben
+
+    }
+    counter -= 1;                   // -1 weil der counter auch hochzählt sobald man auf eine Mine trifft
+    all_highscores();               // Speichert die erreichte Punktzahl
+
+    game_over_condition = false;    // Spiel wird zurückgesetzt
+    counter = 0;                    // Spiel wird zurückgesetzt
+    menureturn();                   // Zurück ins Menü
+}
+
+// Menüfunktionen
+void menu()
+{
+    char selection = '1';
+
+    cout << endl;
+    minesweeper_ascii();
+    cout << " (1) Rules" << endl << endl;
+    cout << " (2) Play" << endl << endl;
+    cout << " (3) Highscores" << endl << endl;
+    cout << " (4) Exit" << endl << endl;
+
+    cin >> selection;
+
+
+    while (selection != '1' && selection != '2' && selection != '3' && selection != '4')
+    {
+        //cout << "invalid input, try again" << endl;
+        cin >> selection;
+    }
+    system("clear");
+    switch (selection)
+    {
+    case '1': return rules();
+    case '2': return game_loop();
+    case '3': return highscores();
+    case '4': exit(0);
+    }
+}
+
+void menureturn()
+{
+    cout << "Press x to return to the menu" << endl << endl;
+
+    string menureturn;
+    cin >> menureturn;
+
+    while (menureturn != "x")
+    {
+        cout << "Invalid input, press x" << endl;
+        cin >> menureturn;
+    }
+    cout << endl << endl;
+    if (menureturn == "x")
+    {
+        system("clear");
+        return menu();
+    }
+}
+
+void rules()
+{
+    rules_ascii();
+
+    cout << "You are presented with a board of squares. Some squares contain mines (bombs), others don't." << endl
+        << "If you click on a square containing a bomb, you lose." << endl
+        << "If you manage to click all the squares (without clicking on any bombs) you win." << endl
+        << "Clicking a square which doesn't have a bomb reveals the number of neighbouring squares containing bombs." << endl
+        << "Use this information plus some guess work to avoid the bombs." << endl
+        << "To open a square, type the row then the column and confirm your input with enter" << endl
+        << "You can press x at any state at the game to interrupt your current session and restart or exit the game" << endl << endl;
+
+    menureturn();
+}
+
+void highscores()
+{
+    highscore_ascii();
+
+    cout << "Highest Score: " << highest_score << endl << endl;
+    cout << "Top Players" << endl << endl;
+
+
+    for (int i = 0; i < player.size(); i++)        // Bisherige Spieler werden ausgegeben
+    {
+        cout << player[i].second << ": " << player[i].first << endl;      // player[i].second speichert den Namen, deswegen geben wir second als erstes aus und danach player[i].first mit der Zahl
+    }
+
+    cout << endl;
+    menureturn();
+}
+
+void all_highscores()
+{
+    string name;
+
+    if (highest_score < counter)        // Falls der bisherige Highscore kleiner als der counter ist nimmt er den neuen Wert, bzw. den neuen Highscore an
+    {
+        highest_score = counter;
+    }
+    cout << "Your score is: " << counter << ", type in your username to safe your score: ";
+    cin >> name;
+    player.push_back(make_pair(counter, name)); // Fügt dem Vektor einen neuen Spieler hinzu und koppelt ihn zusätzlich an seine erreichte Punktzahl
+
+    sort(begin(player), end(player));           // Sortiert den Vektor nach den den Zahlen die im counter stehen
+
+    reverse(player.begin(), player.end());      // Da wir aber vom größten Wert anfangen wollen wird es umgekehrt
+
+    cout << endl;
+}
+
+// Letzte Ausgabe
+void final_print_loss()
+{
+    for (int i = 0; i < 10; i++)
+    {
+        if (i == 9)                             // Um die 10te Reihe gerade zu rücken
+        {
+            cout << i + 1 << " ";
+        }
+        else                                    // Ausgabe von 1-9
+        {
+            cout << " " << i + 1 << " ";        // Damit 1-10 Reihen ausgegeben wird und nicht 0-9 Reihen
+        }
+        for (int j = 0; j < 10; j++)            // Nach jeder ausgegebenen Zahl werden die '*' ausgegeben
+        {
+            if (mine_position[i][j] == 'X')
+            {
+                field[i][j] = 'X';
+            }
+            cout << field[i][j] << " ";
+        }
+
+        cout << endl;
+    }
+}
+
+void final_print_win()
+{
+    for (int i = 0; i < 10; i++)
+    {
+        if (i == 9)                             // Um die 10te Reihe gerade zu rücken
+        {
+            cout << i + 1 << " ";
+        }
+        else                                    // Ausgabe von 1-9
+        {
+            cout << " " << i + 1 << " ";        // Damit 1-10 Reihen ausgegeben wird und nicht 0-9 Reihen
+        }
+        for (int j = 0; j < 10; j++)            // Nach jeder ausgegebenen Zahl werden die '*' ausgegeben
+        {
+            if (mine_position[i][j] == 'X')
+            {
+                field[i][j] = '+';
+            }
+            cout << field[i][j] << " ";
+        }
+
+        cout << endl;
+    }
+}
+
+void game_over_ascii()
+{
+    cout << "     _________   __  _______     ____ _   ______ ____  " << endl
+        << "    / ___ / _ | /  |/  / __/    / __ | | / / __/  _  | " << endl
+        << "   / (_  / __ |/ /|_/ / _/     / /_/ / |/ / _/ / , _/  " << endl
+        << "   |___ /_/ |_/_/  /_/___/     |____/|___/___/|_/|_|   " << endl << endl << endl;
+}
+
+void you_win_ascii()
+{
+    cout << "    __  ______  __  __  _      _______  __ " << endl
+        << "    | |/ / __ |/ / / / | | /| / /  _/ |/ / " << endl
+        << "     |  / /_/ / /_/ /  | |/ |/ // //    /  " << endl
+        << "     /_/|____/|____/   |__/|__/___/_/|_/   " << endl << endl;
+}
+
+void minesweeper_ascii()
+{
+    cout << "     __  ________  ___________      _____________  _______   " << endl
+        << "    /  |/  /  _/ |/ / __/ __/ | /| / / __/ __/ _ |/ __/ _ |  " << endl
+        << "   / /|_/ // //    / _/_| | | |/ |/ / _// _// ___/ _// , _/  " << endl
+        << "  /_/  /_/___/_/|_/___/___/ |__/|__/___/___/_/  /___/_/|_|   " << endl << endl;
+}
+
+void highscore_ascii()
+{
+    cout << "      __  ______________  _______ __________  ____  ___________ " << endl
+        << "     / / / /  _/ ____/ / / / ___// ____/ __ |/ __ |/ ____/ ___/ " << endl
+        << "    / /_/ // // / __/ /_/ /|__ |/ /   / / / / /_/ / __/  |__ |  " << endl
+        << "   / __  // // /_/ / __  /___/ / /___/ /_/ / _, _/ /___ ___/ /  " << endl
+        << "  /_/ /_/___/|____/_/ /_//____/|____/|____/_/ |_/_____//_____/   " << endl << endl;
+}
+
+void rules_ascii()
+{
+    cout << "     ___  __  ____   ________ " << endl
+        << "    / _ |/ / / / /  / __/ __/ " << endl
+        << "   / , _/ /_/ / /__/ _/_| |   " << endl
+        << "  /_/|_||____/____/___/___/   " << endl << endl;
+}
+
+int main()
+{
+    menu();
+    system("PAUSE");
+}
